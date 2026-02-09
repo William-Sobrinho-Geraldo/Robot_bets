@@ -29,13 +29,12 @@ async def run():
     print("🚀 PLAYWRIGHT: MODO PERSISTENTE (RESETS)")
     print("="*30)
 
-    # Mudamos o nome da pasta para garantir que não haja travas antigas
+    # Pasta de perfil isolada para evitar travas
     perfil_bot = os.path.join(os.getcwd(), "perfil_novo_bot")
 
     async with async_playwright() as p:
         try:
-            # Removido o channel="chrome" para usar o Chromium do Playwright
-            # Isso isola o robô do seu navegador de uso diário
+            # Lançando o Chromium nativo do Playwright para maior estabilidade
             context = await p.chromium.launch_persistent_context(
                 perfil_bot,
                 headless=False,
@@ -43,7 +42,7 @@ async def run():
                 args=["--no-sandbox", "--disable-dev-shm-usage"]
             )
         except Exception as e:
-            print(f"❌ ERRO CRÍTICO: {e}")
+            print(f"❌ ERRO CRÍTICO AO INICIAR: {e}")
             return
 
         page = context.pages[0] if context.pages else await context.new_page()
@@ -52,7 +51,7 @@ async def run():
         try:
             await page.goto("https://superbet.bet.br/apostas/futebol/brasil/brasileiro-serie-a", wait_until="load")
         except:
-            print("⚠️ Timeout, tentando prosseguir...")
+            print("⚠️ Timeout na navegação, tentando prosseguir...")
 
         print("⏳ Aguardando renderização (15s)...")
         await asyncio.sleep(15)
@@ -61,6 +60,13 @@ async def run():
         for i, bilhete in enumerate(combinacoes[:1], 1):
             print(f"\n--- 🎫 BILHETE DE TESTE #{i} ---")
             
+            # --- NOVO: LOG DO QUE SERÁ EXECUTADO NESTA APOSTA ---
+            mapa_resultado = {"1": "Vitória", "X": "Empate", "2": "Derrota"}
+            for idx, palpite in enumerate(bilhete):
+                tipo_aposta = mapa_resultado.get(palpite, palpite)
+                print(f"📋 Jogo {idx + 1}: {nomes_dos_jogos[idx]} -> {tipo_aposta}")
+            print("-" * 30)
+
             for j, palpite in enumerate(bilhete):
                 nome_time = nomes_dos_jogos[j]
                 posicao = 1 if palpite == "1" else (2 if palpite == "X" else 3)
@@ -91,10 +97,11 @@ async def run():
             # --- VALIDAÇÃO ---
             print("\n🔍 Verificando Cupom...")
             try:
+                # Localiza botão de aposta pelo texto
                 btn_aposta = page.get_by_role("button").filter(has_text="Fazer aposta").first
                 if await btn_aposta.is_visible():
                     await destacar_elemento(btn_aposta)
-                    print("   ✅ [OK] Botão detectado!")
+                    print("   ✅ [OK] Botão 'Fazer aposta' detectado!")
             except:
                 print("   ⚠️ Cupom não identificado.")
 
