@@ -1,2 +1,3 @@
-2026/02/09-19:33:14.488 323c Creating DB C:\Users\willi\Documents\Repos\robot_bet\perfil_novo_bot\Default\shared_proto_db\metadata since it was missing.
-2026/02/09-19:33:14.511 323c Reusing MANIFEST C:\Users\willi\Documents\Repos\robot_bet\perfil_novo_bot\Default\shared_proto_db\metadata/MANIFEST-000001
+2026/02/09-19:56:21.551 5ce0 Reusing MANIFEST C:\Users\willi\Documents\Repos\robot_bet\perfil_novo_bot\Default\shared_proto_db\metadata/MANIFEST-000001
+2026/02/09-19:56:21.552 5ce0 Recovering log #3
+2026/02/09-19:56:21.554 5ce0 Reusing old log C:\Users\willi\Documents\Repos\robot_bet\perfil_novo_bot\Default\shared_proto_db\metadata/000003.log 

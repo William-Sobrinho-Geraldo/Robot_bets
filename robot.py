@@ -24,17 +24,45 @@ async def destacar_elemento(element):
     except:
         pass
 
+async def limpar_bilhete(page):
+    """Localiza a seção do cabeçalho do cupom e clica no botão da lixeira com logs de debug."""
+    try:
+        print("🔍 [DEBUG] Iniciando tentativa de limpeza do bilhete...")
+        
+        # 1. Tenta localizar a seção pai que contém os botões e o contador numérico
+        secao_topo_cupom = page.locator("section").filter(has=page.get_by_role("button")).filter(has_text=re.compile(r"^[0-9]+$")).first
+        
+        # Verificamos se a seção existe e o que ela contém
+        if await secao_topo_cupom.count() > 0:
+            texto_detectado = await secao_topo_cupom.inner_text()
+            print(f"   📂 [DEBUG] Seção do cupom encontrada. Conteúdo detectado: '{texto_detectado.strip()}'")
+            
+            # 2. Localiza o último botão dentro desta seção (Lixeira)
+            btn_lixeira = secao_topo_cupom.get_by_role("button").last
+            
+            if await btn_lixeira.is_visible():
+                print("   🧹 [DEBUG] Botão lixeira visível. Executando clique...")
+                await btn_lixeira.click()
+                print("   ✅ [DEBUG] Clique enviado. Aguardando 1.5s para processamento da UI...")
+                await asyncio.sleep(1.5)
+            else:
+                print("   ⚠️ [DEBUG] Seção encontrada, mas o botão da lixeira não está visível.")
+        else:
+            # Caso comum: o cupom já está vazio, então a section com número não existe
+            print("   ℹ️ [DEBUG] Nenhuma seção com contador numérico encontrada. O cupom deve estar vazio.")
+            
+    except Exception as e:
+        print(f"   ❌ [DEBUG] Erro inesperado na função limpar_bilhete: {str(e)}")
+
 async def run():
     print("\n" + "="*30)
-    print("🚀 PLAYWRIGHT: MODO PERSISTENTE (RESETS)")
+    print("🚀 PLAYWRIGHT: MODO PERSISTENTE")
     print("="*30)
 
-    # Pasta de perfil isolada para evitar travas
     perfil_bot = os.path.join(os.getcwd(), "perfil_novo_bot")
 
     async with async_playwright() as p:
         try:
-            # Lançando o Chromium nativo do Playwright para maior estabilidade
             context = await p.chromium.launch_persistent_context(
                 perfil_bot,
                 headless=False,
@@ -53,32 +81,33 @@ async def run():
         except:
             print("⚠️ Timeout na navegação, tentando prosseguir...")
 
-        print("⏳ Aguardando renderização (15s)...")
-        await asyncio.sleep(15)
+        # Aguarda estabilização inicial
+        await asyncio.sleep(10)
 
         # --- LOOP DE TESTE ---
         for i, bilhete in enumerate(combinacoes[:1], 1):
             print(f"\n--- 🎫 BILHETE DE TESTE #{i} ---")
             
-            # --- NOVO: LOG DO QUE SERÁ EXECUTADO NESTA APOSTA ---
+            # Limpeza inicial obrigatória
+            await limpar_bilhete(page)
+
+            # Log de preview
             mapa_resultado = {"1": "Vitória", "X": "Empate", "2": "Derrota"}
             for idx, palpite in enumerate(bilhete):
                 tipo_aposta = mapa_resultado.get(palpite, palpite)
                 print(f"📋 Jogo {idx + 1}: {nomes_dos_jogos[idx]} -> {tipo_aposta}")
             print("-" * 30)
 
+            # Execução das seleções
             for j, palpite in enumerate(bilhete):
                 nome_time = nomes_dos_jogos[j]
                 posicao = 1 if palpite == "1" else (2 if palpite == "X" else 3)
                 
                 try:
                     print(f"   🔍 Buscando jogo: {nome_time}...")
-                    
-                    # Localiza a linha do jogo baseada no seu Codegen
                     regex_jogo = re.compile(f"Open.*{nome_time}", re.IGNORECASE)
                     botao_linha = page.get_by_role("button", name=regex_jogo)
                     
-                    # Localiza as odds dentro da linha
                     container = page.locator("div").filter(has=botao_linha).last
                     odds = container.locator("button").filter(has_text=re.compile(r"^\d+\.\d+$"))
                     
@@ -94,16 +123,18 @@ async def run():
                 except Exception as e:
                     print(f"   ❌ Erro em {nome_time}: {e}")
 
-            # --- VALIDAÇÃO ---
+            # Validação Final
             print("\n🔍 Verificando Cupom...")
             try:
-                # Localiza botão de aposta pelo texto
                 btn_aposta = page.get_by_role("button").filter(has_text="Fazer aposta").first
                 if await btn_aposta.is_visible():
                     await destacar_elemento(btn_aposta)
                     print("   ✅ [OK] Botão 'Fazer aposta' detectado!")
             except:
                 print("   ⚠️ Cupom não identificado.")
+
+            # Limpeza pós-teste para o próximo ciclo
+            await limpar_bilhete(page)
 
         print("\n🏁 Processo finalizado.")
         await asyncio.sleep(10)

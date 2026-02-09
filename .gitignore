@@ -1,2 +1,6 @@
 # Playwright profile data
 perfil_novo_bot/
+perfil_playwright/
+debug_timeout.png
+__pycache__/
+.env
