@@ -7,13 +7,18 @@ from playwright.async_api import async_playwright
 # --- CONFIGURAÇÃO DOS JOGOS ---
 jogos_config = [
     {"nome": "Vitória BA", "opcoes": ["1", "X", "2"]}, 
-    {"nome": "Chapecoense", "opcoes": ["1", "X"]},
+    {"nome": "Mirassol", "opcoes": ["1", "X", "2"]}, 
+    {"nome": "Chapecoense", "opcoes": ["1", "X", "2"]},
+    {"nome": "Atlético MG", "opcoes": ["1", "X", "2"]},
+    {"nome": "São Paulo", "opcoes": ["1", "X", "2"]},
     {"nome": "Vasco da Gama", "opcoes": ["1", "X", "2"]},
 ]
 
 listas_de_opcoes = [j["opcoes"] for j in jogos_config]
 nomes_dos_jogos = [j["nome"] for j in jogos_config]
 combinacoes = list(itertools.product(*listas_de_opcoes))
+quantidade_total = len(combinacoes)
+print(f"\n Quantidade de apostas totais: {quantidade_total}")
 
 async def limpar_bilhete(page):
     """Localiza a seção do cabeçalho do cupom e clica na lixeira."""
@@ -64,8 +69,8 @@ async def run():
             print("⚠️ Timeout na navegação, tentando prosseguir...")
 
         # --- LOOP DE TESTE ---
-        for i, bilhete in enumerate(combinacoes[:9], 1):
-        # for i, bilhete in enumerate(combinacoes, 1):
+        # for i, bilhete in enumerate(combinacoes[:9], 1):
+        for i, bilhete in enumerate(combinacoes, 1):
             print(f"\n--- 🎫 BILHETE DE TESTE #{i} ---")
             
             await limpar_bilhete(page)
@@ -73,7 +78,7 @@ async def run():
             # Primeiro FOR: Apenas exibição (Log)
             mapa_resultado = {"1": "Vitória", "X": "Empate", "2": "Derrota"}
             for idx, palpite in enumerate(bilhete):
-                print(f"\n📋 {nomes_dos_jogos[idx]} -> {mapa_resultado.get(palpite)}\n")
+                print(f"  📋 {nomes_dos_jogos[idx]} -> {mapa_resultado.get(palpite)}")
             print("-" * 30)
 
             # Segundo FOR: Execução do clique
