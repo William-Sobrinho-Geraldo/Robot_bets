@@ -11,7 +11,6 @@ jogos_config = [
     {"nome": "Chapecoense", "opcoes": ["1", "X", "2"]},
     {"nome": "Atlético MG", "opcoes": ["1", "X", "2"]},
     {"nome": "São Paulo", "opcoes": ["1", "X", "2"]},
-    {"nome": "Vasco da Gama", "opcoes": ["1", "X"]},
 ]
 
 listas_de_opcoes = [j["opcoes"] for j in jogos_config]
