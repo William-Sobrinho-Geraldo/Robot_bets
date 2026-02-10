@@ -64,7 +64,8 @@ async def run():
             print("⚠️ Timeout na navegação, tentando prosseguir...")
 
         # --- LOOP DE TESTE ---
-        for i, bilhete in enumerate(combinacoes, 1):
+        for i, bilhete in enumerate(combinacoes[:9], 1):
+        # for i, bilhete in enumerate(combinacoes, 1):
             print(f"\n--- 🎫 BILHETE DE TESTE #{i} ---")
             
             await limpar_bilhete(page)
