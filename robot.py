@@ -8,55 +8,36 @@ from playwright.async_api import async_playwright
 jogos_config = [
     {"nome": "Vitória BA", "opcoes": ["1", "X", "2"]}, 
     {"nome": "Chapecoense", "opcoes": ["1", "X"]},
-    {"nome": "Atlético MG", "opcoes": ["1", "X", "2"]},
-    {"nome": "São Paulo", "opcoes": ["1", "X", "2"]}
+    {"nome": "Vasco da Gama", "opcoes": ["1", "X", "2"]},
 ]
 
 listas_de_opcoes = [j["opcoes"] for j in jogos_config]
 nomes_dos_jogos = [j["nome"] for j in jogos_config]
 combinacoes = list(itertools.product(*listas_de_opcoes))
 
-async def destacar_elemento(element):
-    """Aplica destaque visual para debug."""
-    try:
-        await element.evaluate("el => { el.style.border = '4px solid red'; el.style.backgroundColor = 'yellow'; }")
-        await asyncio.sleep(0.5)
-    except:
-        pass
-
 async def limpar_bilhete(page):
-    """Localiza a seção do cabeçalho do cupom e clica no botão da lixeira com logs de debug."""
+    """Localiza a seção do cabeçalho do cupom e clica na lixeira."""
     try:
-        print("🔍 [DEBUG] Iniciando tentativa de limpeza do bilhete...")
+        print("🔍 [DEBUG] Verificando bilhete ativo...")
+        secao_topo = page.locator("section").filter(has=page.get_by_role("button")).filter(has_text=re.compile(r"^[0-9]+$")).first
         
-        # 1. Tenta localizar a seção pai que contém os botões e o contador numérico
-        secao_topo_cupom = page.locator("section").filter(has=page.get_by_role("button")).filter(has_text=re.compile(r"^[0-9]+$")).first
-        
-        # Verificamos se a seção existe e o que ela contém
-        if await secao_topo_cupom.count() > 0:
-            texto_detectado = await secao_topo_cupom.inner_text()
-            print(f"   📂 [DEBUG] Seção do cupom encontrada. Conteúdo detectado: '{texto_detectado.strip()}'")
+        if await secao_topo.count() > 0:
+            qtd = await secao_topo.inner_text()
+            print(f"   📂 [DEBUG] Cupom com {qtd.strip()} itens detectado.")
             
-            # 2. Localiza o último botão dentro desta seção (Lixeira)
-            btn_lixeira = secao_topo_cupom.get_by_role("button").last
-            
+            btn_lixeira = secao_topo.get_by_role("button").last
             if await btn_lixeira.is_visible():
-                print("   🧹 [DEBUG] Botão lixeira visível. Executando clique...")
                 await btn_lixeira.click()
-                print("   ✅ [DEBUG] Clique enviado. Aguardando 1.5s para processamento da UI...")
-                await asyncio.sleep(1.5)
-            else:
-                print("   ⚠️ [DEBUG] Seção encontrada, mas o botão da lixeira não está visível.")
+                print("   ✨ [DEBUG] Bilhete esvaziado.")
+                await asyncio.sleep(2) 
         else:
-            # Caso comum: o cupom já está vazio, então a section com número não existe
-            print("   ℹ️ [DEBUG] Nenhuma seção com contador numérico encontrada. O cupom deve estar vazio.")
-            
+            print("   ℹ️ [DEBUG] Bilhete já está limpo.")
     except Exception as e:
-        print(f"   ❌ [DEBUG] Erro inesperado na função limpar_bilhete: {str(e)}")
+        print(f"   ❌ [DEBUG] Erro na limpeza: {str(e)[:50]}")
 
 async def run():
     print("\n" + "="*30)
-    print("🚀 PLAYWRIGHT: MODO PERSISTENTE")
+    print("🚀 PLAYWRIGHT: MODO PERSISTENTE ROBUSTO")
     print("="*30)
 
     perfil_bot = os.path.join(os.getcwd(), "perfil_novo_bot")
@@ -66,7 +47,7 @@ async def run():
             context = await p.chromium.launch_persistent_context(
                 perfil_bot,
                 headless=False,
-                viewport={'width': 1280, 'height': 800},
+                viewport={'width': 1366, 'height': 768},
                 args=["--no-sandbox", "--disable-dev-shm-usage"]
             )
         except Exception as e:
@@ -78,66 +59,96 @@ async def run():
         print("🔗 Acessando Superbet...")
         try:
             await page.goto("https://superbet.bet.br/apostas/futebol/brasil/brasileiro-serie-a", wait_until="load")
+            await asyncio.sleep(3)
         except:
             print("⚠️ Timeout na navegação, tentando prosseguir...")
 
-        # Aguarda estabilização inicial
-        await asyncio.sleep(10)
-
         # --- LOOP DE TESTE ---
-        for i, bilhete in enumerate(combinacoes[:1], 1):
+        for i, bilhete in enumerate(combinacoes[:3], 1):
             print(f"\n--- 🎫 BILHETE DE TESTE #{i} ---")
             
-            # Limpeza inicial obrigatória
             await limpar_bilhete(page)
 
-            # Log de preview
+            # Primeiro FOR: Apenas exibição (Log)
             mapa_resultado = {"1": "Vitória", "X": "Empate", "2": "Derrota"}
             for idx, palpite in enumerate(bilhete):
-                tipo_aposta = mapa_resultado.get(palpite, palpite)
-                print(f"📋 Jogo {idx + 1}: {nomes_dos_jogos[idx]} -> {tipo_aposta}")
+                print(f"📋 {nomes_dos_jogos[idx]} -> {mapa_resultado.get(palpite)}")
             print("-" * 30)
 
-            # Execução das seleções
+            # Segundo FOR: Execução do clique
             for j, palpite in enumerate(bilhete):
                 nome_time = nomes_dos_jogos[j]
-                posicao = 1 if palpite == "1" else (2 if palpite == "X" else 3)
                 
                 try:
-                    print(f"   🔍 Buscando jogo: {nome_time}...")
+                    print(f"   🔍 Buscando: {nome_time} (Alvo: {mapa_resultado[palpite]})...")
                     regex_jogo = re.compile(f"Open.*{nome_time}", re.IGNORECASE)
                     botao_linha = page.get_by_role("button", name=regex_jogo)
                     
                     container = page.locator("div").filter(has=botao_linha).last
-                    odds = container.locator("button").filter(has_text=re.compile(r"^\d+\.\d+$"))
+                    await container.wait_for(state="visible", timeout=10000)
                     
-                    alvo = odds.nth(posicao - 1)
+                    # Identifica botões de odds reais (regex para números e opcionalmente o 'X ' que vimos antes)
+                    # odds = container.locator("button").filter(has_text=re.compile(r"^(X\s)?\d+\.\d+$"))
+                    odds = container.locator("button").filter(has_text=re.compile(r"\d+\.\d+"))
+                    count_odds = await odds.count()
 
-                    await alvo.scroll_into_view_if_needed()
-                    await destacar_elemento(alvo)
-                    await alvo.click(force=True)
-                    
-                    print(f"   ✅ Selecionado: {nome_time} -> {palpite}")
-                    await asyncio.sleep(1.5)
+                    # Lógica de indexação baseada no seu modelo preferido
+                    # Lógica de indexação corrigida para o comportamento da Superbet
+                    if palpite == "1":
+                        alvo = odds.first
+                    elif palpite == "X":
+                        # Se houver 3 colunas, o índice 1 é o Empate.
+                        # Se houver apenas 2, o sistema decide se o X está disponível.
+                        alvo = odds.nth(1) if count_odds > 1 else None
+                        if alvo:
+                            txt = await alvo.inner_text()
+                            print(f"   🔍 [DEBUG] Alvo Empate detectado como: {txt.strip()}")
+                    else: # Palpite "2" (Derrota)
+                        # Se count_odds for 3, a derrota é o índice 2 (last).
+                        # Se for 2, e não for empate, pode ser um mercado sem empate.
+                        alvo = odds.last if count_odds >= 2 else None
+                        if alvo:
+                            txt = await alvo.inner_text()
+                            print(f"   🔍 [DEBUG] Alvo Derrota detectado como: {txt.strip()}")
+                    # if palpite == "1":
+                    #     alvo = odds.first
+                    # elif palpite == "2":
+                    #     # Se houver apenas 2 opções (1 e X), clica no last se quiser o segundo mercado, 
+                    #     # ou retorna None se a vitória do visitante não existir no grid.
+                    #     alvo = odds.last if count_odds > 2 else None
+                    #     print(f"   \n\n Caí na DERROTA, count_odds: {count_odds} \n\n alvo: {await alvo.inner_text() if alvo else 'None'} \n\n")
+
+                    # else: # Palpite "X" (Empate)
+                    #     # Se houver 3 colunas, o índice 1 é o meio. Se houver 2 colunas, o 'X' é o índice 1 (last).
+                    #     alvo = odds.nth(1) if count_odds > 1 else None
+                    #     print(f"   \n\n Caí no empate, count_odds: {count_odds} \n\n alvo: {await alvo.inner_text() if alvo else 'None'} \n\n")
+
+                    if alvo:
+                        # Scroll nativo para visibilidade
+                        await alvo.scroll_into_view_if_needed()
+                        await asyncio.sleep(0.5)
+
+                        # Clique forçado com timeout de segurança
+                        await alvo.click(force=True, timeout=5000)
+                        print(f"   ✅ Selecionado: {nome_time}")
+                    else:
+                        print(f"   ⚠️ Opção {palpite} indisponível para {nome_time}")
+
+                    await asyncio.sleep(1)
 
                 except Exception as e:
-                    print(f"   ❌ Erro em {nome_time}: {e}")
+                    print(f"   ❌ Erro em {nome_time}: {str(e)[:50]}...")
 
-            # Validação Final
-            print("\n🔍 Verificando Cupom...")
+            print("\n🔍 Validando Cupom...")
             try:
                 btn_aposta = page.get_by_role("button").filter(has_text="Fazer aposta").first
-                if await btn_aposta.is_visible():
-                    await destacar_elemento(btn_aposta)
-                    print("   ✅ [OK] Botão 'Fazer aposta' detectado!")
+                await btn_aposta.wait_for(state="visible", timeout=5000)
+                print("   ✅ [OK] Bilhete pronto.")
             except:
-                print("   ⚠️ Cupom não identificado.")
+                print("   ⚠️ Cupom incompleto.")
 
-            # Limpeza pós-teste para o próximo ciclo
-            await limpar_bilhete(page)
-
-        print("\n🏁 Processo finalizado.")
-        await asyncio.sleep(10)
+        print("\n🏁 Processo finalizado com sucesso.")
+        await asyncio.sleep(5)
         await context.close()
 
 if __name__ == "__main__":
