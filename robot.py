@@ -56,7 +56,7 @@ async def run():
 
         page = context.pages[0] if context.pages else await context.new_page()
 
-        print("🔗 Acessando Superbet...")
+        print("🔗 Acessando Superbet 3s ...")
         try:
             await page.goto("https://superbet.bet.br/apostas/futebol/brasil/brasileiro-serie-a", wait_until="load")
             await asyncio.sleep(3)
@@ -64,7 +64,7 @@ async def run():
             print("⚠️ Timeout na navegação, tentando prosseguir...")
 
         # --- LOOP DE TESTE ---
-        for i, bilhete in enumerate(combinacoes[:3], 1):
+        for i, bilhete in enumerate(combinacoes, 1):
             print(f"\n--- 🎫 BILHETE DE TESTE #{i} ---")
             
             await limpar_bilhete(page)
@@ -72,7 +72,7 @@ async def run():
             # Primeiro FOR: Apenas exibição (Log)
             mapa_resultado = {"1": "Vitória", "X": "Empate", "2": "Derrota"}
             for idx, palpite in enumerate(bilhete):
-                print(f"📋 {nomes_dos_jogos[idx]} -> {mapa_resultado.get(palpite)}")
+                print(f"\n📋 {nomes_dos_jogos[idx]} -> {mapa_resultado.get(palpite)}\n")
             print("-" * 30)
 
             # Segundo FOR: Execução do clique
